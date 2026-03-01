@@ -27,4 +27,5 @@ public class AuthController {
                       @RequestParam String password) {
         return authService.login(email, password);
     }
+    
 }

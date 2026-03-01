@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import axios from "axios";
 
 function Register() {
   const navigate = useNavigate();
@@ -11,35 +12,55 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const gmailPattern = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+ const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
   const passwordPattern =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&]).{8,}$/;
 
-  const handleRegister = () => {
-    if (!username || !email || !password) {
-      alert("Please fill out all fields");
-      return;
-    }
+const handleRegister = async () => {
+  if (!username || !email || !password) {
+    alert("Please fill out all fields");
+    return;
+  }
 
-    if (!gmailPattern.test(email)) {
-      alert("Email must be a valid Gmail address (example@gmail.com)");
-      return;
-    }
+  if (!emailPattern.test(email)) {
+    alert("Please enter a valid email address");
+    return;
+  }
 
-    if (!passwordPattern.test(password)) {
-      alert(
-        "Password must be at least 8 characters and include uppercase, lowercase, and special character."
-      );
-      return;
-    }
+  if (!passwordPattern.test(password)) {
+    alert(
+      "Password must be at least 8 characters and include uppercase, lowercase, and special character."
+    );
+    return;
+  }
 
-    if (!agree) {
-      alert("You must agree to Terms & Privacy Policy");
-      return;
-    }
+  if (!agree) {
+    alert("You must agree to Terms & Privacy Policy");
+    return;
+  }
 
-    navigate("/login");
+  const roleMap = {
+    Student: "STUDENT",
+    Jobseeker: "JOB_SEEKER",
+    Recruiter: "RECRUITER"
   };
+
+  try {
+    await axios.post("http://localhost:8081/api/auth/register", {
+      name: username,
+      email: email,
+      password: password,
+      role: roleMap[role]
+    });
+
+    alert("Registration Successful 💖");
+    navigate("/login");
+
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    alert("Registration Failed ❌");
+  }
+};
 
   return (
     <div style={styles.container}>
