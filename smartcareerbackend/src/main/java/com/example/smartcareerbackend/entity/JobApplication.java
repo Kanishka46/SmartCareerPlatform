@@ -40,4 +40,5 @@ public class JobApplication {
         this.appliedAt = LocalDateTime.now();
         if (this.status == null) this.status = ApplicationStatus.APPLIED;
     }
+    
 }

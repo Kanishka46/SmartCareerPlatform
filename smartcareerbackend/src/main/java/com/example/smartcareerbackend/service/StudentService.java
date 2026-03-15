@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 public class StudentService {
 
     private final StudentProfileRepository repo;
+    
 
     public StudentService(StudentProfileRepository repo) {
         this.repo = repo;
@@ -20,4 +21,6 @@ public class StudentService {
     public StudentProfile saveProfile(StudentProfile profile) {
         return repo.save(profile);
     }
+
+
 }

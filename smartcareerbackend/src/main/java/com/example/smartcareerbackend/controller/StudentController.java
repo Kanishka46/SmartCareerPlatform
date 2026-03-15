@@ -24,4 +24,6 @@ public class StudentController {
     public StudentProfile saveProfile(@RequestBody StudentProfile profile) {
         return service.saveProfile(profile);
     }
+
+    
 }

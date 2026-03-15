@@ -8,19 +8,20 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class StudentProfile {
+public class AcademicProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String phone;
-    private String address;
-    private String linkedinUrl;
-    private String githubUrl;
-    private String bio;
+    private Double tenthPercentage;
+    private Double twelfthPercentage;
+    private Double diplomaPercentage;
+    private Double ugPercentage;
 
-     private String resumeUrl;
+    private Boolean backlogHistory;
+    private Integer currentBacklogs;
+    private Boolean interestedInPlacement;
 
     @OneToOne
     @JoinColumn(name = "user_id")

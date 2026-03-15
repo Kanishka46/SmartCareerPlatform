@@ -37,4 +37,5 @@ public class Job {
         this.postedAt = LocalDateTime.now();
         if (this.active == null) this.active = true;
     }
+    
 }
