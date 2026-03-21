@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Doughnut } from "react-chartjs-2";
@@ -21,6 +20,12 @@ function StudentDashboard() {
   const [matchScore, setMatchScore] = useState(0);
 
   const [fileName, setFileName] = useState("");
+
+  // 🔥 LOGOUT FUNCTION
+  const logout = () => {
+    localStorage.removeItem("role");
+    window.location.href = "/login";
+  };
 
   // ✅ SAFE API
   useEffect(() => {
@@ -61,11 +66,21 @@ function StudentDashboard() {
 
       {/* Sidebar */}
       <div style={styles.sidebar}>
-        <h2>🚀 CareerAI</h2>
 
-        <div style={styles.menu} onClick={()=>setActivePage("dashboard")}>📊 Dashboard</div>
-        <div style={styles.menu} onClick={()=>setActivePage("profile")}>👤 Profile</div>
-        <div style={styles.menu} onClick={()=>setActivePage("internships")}>💼 Internships</div>
+        {/* Top */}
+        <div>
+          <h2>🚀 CareerAI</h2>
+
+          <div style={styles.menu} onClick={()=>setActivePage("dashboard")}>📊 Dashboard</div>
+          <div style={styles.menu} onClick={()=>setActivePage("profile")}>👤 Profile</div>
+          <div style={styles.menu} onClick={()=>setActivePage("internships")}>💼 Internships</div>
+        </div>
+
+        {/* 🔥 Logout Bottom */}
+        <div style={styles.logout} onClick={logout}>
+          🚪 Logout
+        </div>
+
       </div>
 
       {/* Main */}
@@ -107,10 +122,9 @@ function StudentDashboard() {
           </>
         )}
 
-        {/* PROFILE (PREMIUM UI) */}
+        {/* PROFILE */}
         {activePage === "profile" && (
           <div style={styles.formCard}>
-
             <h2 style={styles.heading}>👤 Student Profile</h2>
 
             <div style={styles.inputGroup}><span>👤</span><input style={styles.input} placeholder="Full Name" /></div>
@@ -125,7 +139,6 @@ function StudentDashboard() {
             <div style={styles.inputGroup}><span>💻</span><input style={styles.input} placeholder="GitHub URL" /></div>
 
             <button style={styles.button}>Save Profile</button>
-
           </div>
         )}
 
@@ -174,12 +187,21 @@ const styles = {
     width: "230px",
     background: "#0f172a",
     color: "white",
-    padding: "25px"
+    padding: "25px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between" // 🔥 keeps logout at bottom
   },
 
   menu: {
     marginBottom: "20px",
     cursor: "pointer"
+  },
+
+  logout: {
+    cursor: "pointer",
+    color: "#f87171",
+    fontWeight: "bold"
   },
 
   main: {
@@ -281,4 +303,3 @@ const styles = {
   }
 
 };
-

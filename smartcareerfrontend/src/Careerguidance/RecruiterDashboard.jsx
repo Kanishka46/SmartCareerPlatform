@@ -3,421 +3,229 @@ import axios from "axios";
 
 function RecruiterDashboard() {
 
-const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState("dashboard");
 
-const [internships, setInternships] = useState([]);
-const [applications, setApplications] = useState([]);
+  const [internships, setInternships] = useState([]);
 
-const [title, setTitle] = useState("");
-const [company, setCompany] = useState("");
-const [location, setLocation] = useState("");
-const [skills, setSkills] = useState("");
-const [description, setDescription] = useState("");
+  const [job, setJob] = useState({
+    title: "",
+    company: "",
+    location: "",
+    stipend: ""
+  });
 
+  // 🔥 LOGOUT FUNCTION
+  const logout = () => {
+    localStorage.removeItem("role");
+    window.location.href = "/login";
+  };
 
+  // ✅ Fetch internships
+  useEffect(() => {
+    axios.get("http://localhost:8081/api/internships")
+      .then(res => setInternships(res.data))
+      .catch(() => setInternships([]));
+  }, []);
 
-/* ================= FETCH INTERNSHIPS ================= */
+  const handleChange = (e) => {
+    setJob({ ...job, [e.target.name]: e.target.value });
+  };
 
-useEffect(() => {
+  // ✅ Post Internship
+  const postInternship = () => {
 
-axios.get("http://localhost:8081/api/internships")
-.then(res=>{
-setInternships(res.data);
-})
-.catch(err=>{
-console.log(err);
-});
+    if (!job.title || !job.company) {
+      alert("Fill required fields");
+      return;
+    }
 
-},[]);
+    axios.post("http://localhost:8081/api/internships", job)
+      .then(() => {
+        alert("Internship Posted ✅");
+        setInternships([...internships, job]);
+        setJob({ title:"", company:"", location:"", stipend:"" });
+      })
+      .catch(() => {
+        setInternships([...internships, job]);
+        alert("Posted (local mode) ✅");
+      });
+  };
 
+  // ✅ Delete Internship
+  const deleteInternship = (index) => {
+    const updated = internships.filter((_, i) => i !== index);
+    setInternships(updated);
+  };
 
+  return (
+    <div style={styles.container}>
 
-/* ================= FETCH APPLICATIONS ================= */
+      {/* Sidebar */}
+      <div style={styles.sidebar}>
 
-const loadApplications = () => {
+        {/* Top Menu */}
+        <div>
+          <h2>🏢 Recruiter Panel</h2>
 
-axios.get("http://localhost:8081/api/applications")
-.then(res=>{
-setApplications(res.data);
-})
-.catch(err=>{
-console.log(err);
-});
+          <div style={styles.menu} onClick={()=>setActivePage("dashboard")}>📊 Dashboard</div>
+          <div style={styles.menu} onClick={()=>setActivePage("post")}>➕ Post Internship</div>
+          <div style={styles.menu} onClick={()=>setActivePage("manage")}>📋 Manage Internships</div>
+        </div>
 
-};
+        {/* 🔥 Logout at bottom */}
+        <div style={styles.logout} onClick={logout}>
+          🚪 Logout
+        </div>
 
+      </div>
 
+      {/* Main */}
+      <div style={styles.main}>
+        <h1>💼 Recruiter Dashboard</h1>
 
-/* ================= POST INTERNSHIP ================= */
+        {/* DASHBOARD */}
+        {activePage === "dashboard" && (
+          <div style={styles.section}>
+            <h2>Welcome Recruiter 👋</h2>
+            <p>Total Internships Posted: {internships.length}</p>
+          </div>
+        )}
 
-const postInternship = async () => {
+        {/* POST INTERNSHIP */}
+        {activePage === "post" && (
+          <div style={styles.formCard}>
+            <h2>➕ Post Internship</h2>
 
-if(!title || !company || !location){
-alert("Please fill all fields");
-return;
+            <input name="title" value={job.title} onChange={handleChange} style={styles.input} placeholder="Job Title" />
+            <input name="company" value={job.company} onChange={handleChange} style={styles.input} placeholder="Company Name" />
+            <input name="location" value={job.location} onChange={handleChange} style={styles.input} placeholder="Location" />
+            <input name="stipend" value={job.stipend} onChange={handleChange} style={styles.input} placeholder="Stipend" />
+
+            <button style={styles.button} onClick={postInternship}>Post Internship</button>
+          </div>
+        )}
+
+        {/* MANAGE INTERNSHIPS */}
+        {activePage === "manage" && (
+          <div style={styles.section}>
+            <h2>📋 Manage Internships</h2>
+
+            {internships.length === 0 ? (
+              <p>No internships posted</p>
+            ) : (
+              internships.map((job, index) => (
+                <div key={index} style={styles.jobCard}>
+                  <h3>{job.title}</h3>
+                  <p>🏢 {job.company}</p>
+                  <p>📍 {job.location}</p>
+                  <p>💰 {job.stipend}</p>
+
+                  <button
+                    style={styles.deleteButton}
+                    onClick={()=>deleteInternship(index)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 }
 
-try{
+export default RecruiterDashboard;
 
-await axios.post("http://localhost:8081/api/internships",{
-title,
-company,
-location,
-skills,
-description
-});
 
-alert("Internship Posted Successfully 🚀");
-
-setTitle("");
-setCompany("");
-setLocation("");
-setSkills("");
-setDescription("");
-
-window.location.reload();
-
-}catch(error){
-alert("Error posting internship");
-}
-
-};
-
-
-
-/* ================= DELETE INTERNSHIP ================= */
-
-const deleteInternship = async (id) => {
-
-try{
-
-await axios.delete(`http://localhost:8081/api/internships/${id}`);
-
-alert("Internship Deleted");
-
-setInternships(internships.filter(i => i.id !== id));
-
-}catch(err){
-alert("Delete failed");
-}
-
-};
-
-
-
-/* ================= SIDEBAR ================= */
-
-const Sidebar = () => (
-
-<div style={styles.sidebar}>
-
-<h2 style={{color:"#00ffff"}}>Recruiter</h2>
-
-<button style={styles.menu} onClick={()=>setActivePage("dashboard")}>
-📊 Dashboard
-</button>
-
-<button style={styles.menu} onClick={()=>setActivePage("post")}>
-💼 Post Internship
-</button>
-
-<button style={styles.menu} onClick={()=>setActivePage("internships")}>
-📄 My Internships
-</button>
-
-<button style={styles.menu} onClick={()=>{
-setActivePage("applications");
-loadApplications();
-}}>
-👨‍🎓 Applicants
-</button>
-
-</div>
-
-);
-
-
-
-/* ================= DASHBOARD ================= */
-
-const Dashboard = () => (
-
-<div>
-
-<h2>📊 Recruiter Dashboard</h2>
-
-<div style={styles.cardContainer}>
-
-<div style={styles.card}>
-<h3>Total Internships</h3>
-<p>{internships.length}</p>
-</div>
-
-<div style={styles.card}>
-<h3>Total Applicants</h3>
-<p>{applications.length}</p>
-</div>
-
-</div>
-
-</div>
-
-);
-
-
-
-/* ================= POST INTERNSHIP ================= */
-
-const PostInternship = () => (
-
-<div>
-
-<h2>💼 Post Internship</h2>
-
-<input
-style={styles.input}
-placeholder="Internship Title"
-value={title}
-onChange={e=>setTitle(e.target.value)}
-/>
-
-<input
-style={styles.input}
-placeholder="Company Name"
-value={company}
-onChange={e=>setCompany(e.target.value)}
-/>
-
-<input
-style={styles.input}
-placeholder="Location"
-value={location}
-onChange={e=>setLocation(e.target.value)}
-/>
-
-<input
-style={styles.input}
-placeholder="Required Skills"
-value={skills}
-onChange={e=>setSkills(e.target.value)}
-/>
-
-<textarea
-style={styles.textarea}
-placeholder="Description"
-value={description}
-onChange={e=>setDescription(e.target.value)}
-/>
-
-<button style={styles.button} onClick={postInternship}>
-Post Internship 🚀
-</button>
-
-</div>
-
-);
-
-
-
-/* ================= INTERNSHIPS ================= */
-
-const InternshipList = () => (
-
-<div>
-
-<h2>📄 My Internships</h2>
-
-{internships.map((i)=>(
-<div key={i.id} style={styles.listCard}>
-
-<h3>{i.title}</h3>
-
-<p>🏢 {i.company}</p>
-
-<p>📍 {i.location}</p>
-
-<p>🛠 {i.skills}</p>
-
-<button
-style={styles.deleteBtn}
-onClick={()=>deleteInternship(i.id)}
->
-Delete
-</button>
-
-</div>
-))}
-
-</div>
-
-);
-
-
-
-/* ================= APPLICATIONS ================= */
-
-const Applications = () => (
-
-<div>
-
-<h2>👨‍🎓 Applicants</h2>
-
-{applications.map((app)=>(
-<div key={app.id} style={styles.listCard}>
-
-<h3>Student ID: {app.studentId}</h3>
-
-<p>Internship ID: {app.internshipId}</p>
-
-<p>Status: {app.status}</p>
-
-</div>
-))}
-
-</div>
-
-);
-
-
-
-/* ================= PAGE SWITCH ================= */
-
-const renderPage = () => {
-
-switch(activePage){
-
-case "dashboard":
-return <Dashboard/>
-
-case "post":
-return <PostInternship/>
-
-case "internships":
-return <InternshipList/>
-
-case "applications":
-return <Applications/>
-
-default:
-return <Dashboard/>
-
-}
-
-};
-
-
-
-/* ================= MAIN ================= */
-
-return (
-
-<div style={styles.container}>
-
-<Sidebar/>
-
-<div style={styles.content}>
-{renderPage()}
-</div>
-
-</div>
-
-);
-
-}
-
-
-
-/* ================= STYLES ================= */
+/* 🎨 STYLES */
 
 const styles = {
 
-container:{
-display:"flex",
-height:"100vh",
-fontFamily:"Segoe UI"
-},
+  container:{
+    display:"flex",
+    height:"100vh",
+    background:"#f1f5f9"
+  },
 
-sidebar:{
-width:"230px",
-background:"#0f172a",
-color:"white",
-padding:"20px",
-display:"flex",
-flexDirection:"column"
-},
+  sidebar:{
+    width:"230px",
+    background:"#0f172a",
+    color:"white",
+    padding:"25px",
+    display:"flex",
+    flexDirection:"column",
+    justifyContent:"space-between" // 🔥 keeps logout at bottom
+  },
 
-menu:{
-background:"transparent",
-border:"none",
-color:"white",
-padding:"12px",
-textAlign:"left",
-cursor:"pointer",
-fontSize:"15px"
-},
+  menu:{
+    marginBottom:"20px",
+    cursor:"pointer"
+  },
 
-content:{
-flex:1,
-padding:"40px",
-background:"#f1f5f9",
-overflowY:"auto"
-},
+  logout:{
+    cursor:"pointer",
+    color:"#f87171",
+    fontWeight:"bold"
+  },
 
-input:{
-width:"100%",
-padding:"10px",
-margin:"10px 0",
-borderRadius:"6px",
-border:"1px solid #ccc"
-},
+  main:{
+    flex:1,
+    padding:"30px",
+    overflow:"auto"
+  },
 
-textarea:{
-width:"100%",
-height:"100px",
-padding:"10px",
-margin:"10px 0"
-},
+  section:{
+    background:"white",
+    padding:"20px",
+    marginTop:"20px",
+    borderRadius:"10px"
+  },
 
-button:{
-padding:"12px",
-background:"#2563eb",
-color:"white",
-border:"none",
-borderRadius:"6px",
-cursor:"pointer"
-},
+  formCard:{
+    background:"white",
+    padding:"30px",
+    marginTop:"20px",
+    borderRadius:"10px",
+    width:"500px",
+    marginLeft:"20px"
+  },
 
-cardContainer:{
-display:"flex",
-gap:"20px"
-},
+  input:{
+    width:"100%",
+    padding:"10px",
+    margin:"10px 0",
+    borderRadius:"8px",
+    border:"1px solid #ccc"
+  },
 
-card:{
-background:"white",
-padding:"20px",
-borderRadius:"10px",
-width:"200px",
-boxShadow:"0 3px 10px rgba(0,0,0,0.1)"
-},
+  button:{
+    marginTop:"10px",
+    padding:"10px",
+    background:"#2563eb",
+    color:"white",
+    border:"none",
+    borderRadius:"6px",
+    cursor:"pointer"
+  },
 
-listCard:{
-background:"white",
-padding:"20px",
-marginTop:"15px",
-borderRadius:"10px",
-boxShadow:"0 2px 8px rgba(0,0,0,0.1)"
-},
+  deleteButton:{
+    marginTop:"10px",
+    padding:"8px",
+    background:"#dc2626",
+    color:"white",
+    border:"none",
+    borderRadius:"6px",
+    cursor:"pointer"
+  },
 
-deleteBtn:{
-background:"red",
-color:"white",
-border:"none",
-padding:"6px 12px",
-borderRadius:"5px",
-cursor:"pointer",
-marginTop:"10px"
-}
+  jobCard:{
+    background:"#f8fafc",
+    padding:"20px",
+    marginTop:"15px",
+    borderRadius:"8px"
+  }
 
 };
-
-export default RecruiterDashboard;
