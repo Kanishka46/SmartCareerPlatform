@@ -1,11 +1,15 @@
 import { Navigate } from "react-router-dom";
+import { getDashboardPath, getStoredRole } from "./auth";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, allowedRoles = [] }) {
+  const role = getStoredRole();
 
-  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  if (!role) {
+    return <Navigate to="/login" replace />;
+  }
 
-  if (!isLoggedIn) {
-    return <Navigate to="/login" />;
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    return <Navigate to={getDashboardPath(role)} replace />;
   }
 
   return children;

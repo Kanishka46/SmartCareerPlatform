@@ -1,86 +1,74 @@
 import { useNavigate } from "react-router-dom";
+import { getDashboardPath, getStoredRole } from "../auth";
+import "./auth-pages.css";
 
 function Landing() {
   const navigate = useNavigate();
+  const savedRole = getStoredRole();
+
+  const handlePrimaryAction = () => {
+    if (savedRole) {
+      navigate(getDashboardPath(savedRole));
+      return;
+    }
+
+    navigate("/register");
+  };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.navbar}>
-        <div style={styles.logo}>CareerAI</div>
+    <div className="auth-shell landing-shell">
+      <header className="landing-header">
         <div>
-          <button style={styles.outlineBtn} onClick={() => navigate("/login")}>
+          <p className="landing-badge">Smart Career Guidance Platform Using AI</p>
+          <h1 className="landing-logo">SmartCareer AI</h1>
+        </div>
+
+        <div className="landing-actions">
+          <button className="ghost-button" onClick={() => navigate("/login")}>
             Login
           </button>
-          <button style={styles.primaryBtn} onClick={() => navigate("/register")}>
+          <button className="primary-button" onClick={() => navigate("/register")}>
             Register
           </button>
         </div>
-      </div>
+      </header>
 
-      <div style={styles.hero}>
-        <h1>
-          Smart Career Guidance Platform <br />
-          <span style={{ color: "#38bdf8" }}>Using AI</span>
-        </h1>
-        <p>
-          AI-powered job matching, skill gap analysis,
-          and career prediction tailored for you.
-        </p>
-        <button
-          style={{ ...styles.primaryBtn, marginTop: "20px" }}
-          onClick={() => navigate("/register")}
-        >
-          Get Started
-        </button>
-      </div>
+      <section className="landing-hero">
+        <div className="hero-copy">
+          <p className="eyebrow">Career Twin + Skill Intelligence</p>
+          <h2>Match the right role, uncover the skill gap, and plan the next move with AI.</h2>
+          <p className="hero-text">
+            A full-stack career guidance workspace for students, job seekers, recruiters, and admins.
+            Upload resumes, compare skills with market demand, and route every user to the right dashboard.
+          </p>
+
+          <div className="hero-cta-row">
+            <button className="primary-button large-button" onClick={handlePrimaryAction}>
+              {savedRole ? "Go to Dashboard" : "Create Account"}
+            </button>
+            <button className="secondary-button large-button" onClick={() => navigate("/login")}>
+              Sign In
+            </button>
+          </div>
+        </div>
+
+        <div className="hero-panel">
+          <div className="metric-card">
+            <span>AI Resume Parsing</span>
+            <strong>Skill extraction and role fit scoring</strong>
+          </div>
+          <div className="metric-card">
+            <span>Explainable Matching</span>
+            <strong>See why a job was recommended</strong>
+          </div>
+          <div className="metric-card">
+            <span>Role-Based Platform</span>
+            <strong>Student, Job Seeker, Recruiter, Admin</strong>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    height: "100vh",
-    width: "100%",
-    background: "linear-gradient(to right, #0f172a, #1e3a8a)",
-    color: "white",
-    display: "flex",
-    flexDirection: "column"
-  },
-  navbar: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "20px 60px"
-  },
-  logo: {
-    fontSize: "22px",
-    fontWeight: "bold",
-    color: "#38bdf8"
-  },
-  hero: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    textAlign: "center"
-  },
-  outlineBtn: {
-    background: "transparent",
-    border: "1px solid #38bdf8",
-    color: "#38bdf8",
-    padding: "8px 16px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    marginRight: "10px"
-  },
-  primaryBtn: {
-    background: "linear-gradient(135deg, #2563eb, #38bdf8)",
-    color: "white",
-    border: "none",
-    padding: "8px 16px",
-    borderRadius: "6px",
-    cursor: "pointer"
-  }
-};
 
 export default Landing;

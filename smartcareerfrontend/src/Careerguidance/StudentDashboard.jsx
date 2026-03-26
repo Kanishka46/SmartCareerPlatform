@@ -7,6 +7,7 @@ import {
   Tooltip,
   Legend
 } from "chart.js";
+import { clearAuthSession } from "../auth";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -23,7 +24,7 @@ function StudentDashboard() {
 
   // 🔥 LOGOUT FUNCTION
   const logout = () => {
-    localStorage.removeItem("role");
+    clearAuthSession();
     window.location.href = "/login";
   };
 

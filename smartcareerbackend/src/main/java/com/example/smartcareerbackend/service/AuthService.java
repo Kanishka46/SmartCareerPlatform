@@ -1,81 +1,84 @@
 package com.example.smartcareerbackend.service;
 
+import com.example.smartcareerbackend.dto.AuthRequest;
+import com.example.smartcareerbackend.dto.AuthResponse;
+import com.example.smartcareerbackend.dto.RegisterRequest;
 import com.example.smartcareerbackend.entity.Role;
 import com.example.smartcareerbackend.entity.User;
 import com.example.smartcareerbackend.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
 
+    private static final String ADMIN_EMAIL = "admin@smartcareer.com";
+    private static final String ADMIN_PASSWORD = "Admin@123";
+
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final EmailService emailService;   // ⭐ NEW
+    private final EmailService emailService;
 
-    // ⭐ Fixed Admin Credentials
-    private static final String ADMIN_EMAIL = "admin@smartcareer.com";
-    private static final String ADMIN_PASSWORD = "admin123";
-
-    // ⭐ Updated Constructor (Inject EmailService)
-    public AuthService(UserRepository userRepository,
-                       BCryptPasswordEncoder passwordEncoder,
-                       EmailService emailService) {
-
+    public AuthService(
+        UserRepository userRepository,
+        BCryptPasswordEncoder passwordEncoder,
+        EmailService emailService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
     }
 
-    // ============================================================
-    // ✅ REGISTER USER + SEND ROLE-BASED EMAIL
-    // ============================================================
-    public User register(User user) {
+    public AuthResponse register(RegisterRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
 
-        // Encrypt password
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (normalizedEmail.equals(ADMIN_EMAIL)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This email is reserved for admin access.");
+        }
 
-        // Save user in DB
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered.");
+        }
+
+        User user = new User();
+        user.setName(request.getName().trim());
+        user.setEmail(normalizedEmail);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole());
+
         User savedUser = userRepository.save(user);
 
-        // ⭐ SEND EMAIL ONLY IF NOT ADMIN
-        if (savedUser.getRole() != Role.ADMIN) {
-
-            emailService.sendRegistrationEmail(
-                    savedUser.getEmail(),
-                    savedUser.getName(),
-                    savedUser.getRole()
-            );
+        try {
+            if (savedUser.getRole() != Role.ADMIN) {
+                emailService.sendRegistrationEmail(savedUser.getEmail(), savedUser.getName(), savedUser.getRole());
+            }
+        } catch (Exception ignored) {
+            // Registration succeeds even if email delivery is unavailable.
         }
 
-        return savedUser;
+        return buildResponse(savedUser, "Registration successful.");
     }
 
-    // ============================================================
-    // ✅ LOGIN
-    // ============================================================
-    public User login(String email, String password) {
+    public AuthResponse login(AuthRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
 
-        // ⭐ STATIC ADMIN LOGIN
-        if (email.equals(ADMIN_EMAIL) && password.equals(ADMIN_PASSWORD)) {
-
-            User admin = new User();
-            admin.setId(0L);
-            admin.setName("Admin");
-            admin.setEmail(ADMIN_EMAIL);
-            admin.setRole(Role.ADMIN);
-
-            return admin;
+        if (normalizedEmail.equals(ADMIN_EMAIL) && ADMIN_PASSWORD.equals(request.getPassword())) {
+            return new AuthResponse(0L, "Admin", ADMIN_EMAIL, Role.ADMIN, "Login successful.");
         }
 
-        // ⭐ NORMAL USER LOGIN
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(normalizedEmail)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password."));
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid password");
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         }
 
-        return user;
+        return buildResponse(user, "Login successful.");
+    }
+
+    private AuthResponse buildResponse(User user, String message) {
+        return new AuthResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), message);
     }
 }

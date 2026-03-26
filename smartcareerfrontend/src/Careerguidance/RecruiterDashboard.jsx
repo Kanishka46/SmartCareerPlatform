@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { clearAuthSession } from "../auth";
 
 function RecruiterDashboard() {
 
@@ -16,7 +17,7 @@ function RecruiterDashboard() {
 
   // 🔥 LOGOUT FUNCTION
   const logout = () => {
-    localStorage.removeItem("role");
+    clearAuthSession();
     window.location.href = "/login";
   };
 

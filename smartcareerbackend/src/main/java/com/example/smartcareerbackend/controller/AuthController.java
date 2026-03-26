@@ -1,12 +1,19 @@
 package com.example.smartcareerbackend.controller;
 
-import com.example.smartcareerbackend.entity.User;
+import com.example.smartcareerbackend.dto.AuthRequest;
+import com.example.smartcareerbackend.dto.AuthResponse;
+import com.example.smartcareerbackend.dto.RegisterRequest;
 import com.example.smartcareerbackend.service.AuthService;
-import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     private final AuthService authService;
@@ -15,17 +22,13 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // ✅ REGISTER
     @PostMapping("/register")
-    public User register(@RequestBody User user) {
-        return authService.register(user);
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+        return authService.register(request);
     }
 
-    // ✅ LOGIN
     @PostMapping("/login")
-    public User login(@RequestParam String email,
-                      @RequestParam String password) {
-        return authService.login(email, password);
+    public AuthResponse login(@Valid @RequestBody AuthRequest request) {
+        return authService.login(request);
     }
-    
 }

@@ -1,198 +1,189 @@
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../auth";
+import "./auth-pages.css";
+
+const roles = [
+  { label: "Student", value: "STUDENT", description: "Upload resumes, view internships, and track skill analysis." },
+  { label: "Job Seeker", value: "JOB_SEEKER", description: "Get job recommendations, career path suggestions, and application tracking." },
+  { label: "Recruiter", value: "RECRUITER", description: "Post jobs or internships and manage incoming applications." },
+];
+
+const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
 function Register() {
   const navigate = useNavigate();
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "STUDENT",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [status, setStatus] = useState({ type: "", message: "" });
+  const [loading, setLoading] = useState(false);
 
-  const [role, setRole] = useState("Student");
-  const [agree, setAgree] = useState(false);
-
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
- const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  const passwordPattern =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&]).{8,}$/;
-
-const handleRegister = async () => {
-  if (!username || !email || !password) {
-    alert("Please fill out all fields");
-    return;
-  }
-
-  if (!emailPattern.test(email)) {
-    alert("Please enter a valid email address");
-    return;
-  }
-
-  if (!passwordPattern.test(password)) {
-    alert(
-      "Password must be at least 8 characters and include uppercase, lowercase, and special character."
-    );
-    return;
-  }
-
-  if (!agree) {
-    alert("You must agree to Terms & Privacy Policy");
-    return;
-  }
-
-  const roleMap = {
-    Student: "STUDENT",
-    Jobseeker: "JOB_SEEKER",
-    Recruiter: "RECRUITER"
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: "" }));
   };
 
-  try {
-    await axios.post("http://localhost:8081/api/auth/register", {
-      name: username,
-      email: email,
-      password: password,
-      role: roleMap[role]
-    });
+  const validate = () => {
+    const nextErrors = {};
 
-    alert("Registration Successful 💖");
-    navigate("/login");
+    if (!form.name.trim()) {
+      nextErrors.name = "Name is required.";
+    }
 
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    alert("Registration Failed ❌");
-  }
-};
+    if (!form.email.trim()) {
+      nextErrors.email = "Email is required.";
+    } else if (!emailPattern.test(form.email.trim())) {
+      nextErrors.email = "Enter a valid email address.";
+    }
+
+    if (!form.password) {
+      nextErrors.password = "Password is required.";
+    } else if (!passwordPattern.test(form.password)) {
+      nextErrors.password = "Use 8+ characters with uppercase, lowercase, number, and special character.";
+    }
+
+    if (!form.role) {
+      nextErrors.role = "Select a role.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!validate()) {
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ type: "", message: "" });
+
+    try {
+      await axios.post(`${API_BASE_URL}/auth/register`, {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+      });
+
+      setStatus({ type: "success", message: "Registration successful. Please log in with the same email." });
+      navigate("/login");
+    } catch (error) {
+      const message = error.response?.data?.message || "Registration failed. Please try again.";
+      setStatus({ type: "error", message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2>Smart Career Guidance Platform Using AI</h2>
-        <h3>Create Your Account.</h3>
-        <p>Start your personalized career path today.</p>
-
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <input
-          style={styles.input}
-          type="email"
-          placeholder="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          style={styles.input}
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <p>Choose Your Role:</p>
-
-        <div style={styles.roleContainer}>
-          {["Student", "Jobseeker", "Recruiter"].map((r) => (
-            <button
-              key={r}
-              style={{
-                ...styles.roleBtn,
-                background: role === r ? "#00ffff" : "transparent",
-                color: role === r ? "black" : "white"
-              }}
-              onClick={() => setRole(r)}
-            >
-              {r}
-            </button>
-          ))}
+    <div className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-copy">
+          <p className="eyebrow">Create Your Account</p>
+          <h1>Start with your role</h1>
+          <p>During registration you only need to choose the role. During login, the platform reads the email and redirects to the matching dashboard automatically.</p>
         </div>
 
-        <div style={styles.termsContainer}>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <label className="field-label" htmlFor="name">
+            Full Name
+          </label>
           <input
-            type="checkbox"
-            checked={agree}
-            onChange={() => setAgree(!agree)}
+            id="name"
+            className="field-input"
+            type="text"
+            name="name"
+            placeholder="Enter your full name"
+            value={form.name}
+            onChange={handleChange}
           />
-          <p style={styles.termsText}>
-            I agree to the Terms of Service & Privacy Policy.
+          {errors.name ? <p className="field-error">{errors.name}</p> : null}
+
+          <label className="field-label" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            className="field-input"
+            type="email"
+            name="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={handleChange}
+          />
+          {errors.email ? <p className="field-error">{errors.email}</p> : null}
+
+          <label className="field-label" htmlFor="password">
+            Password
+          </label>
+          <div className="password-field">
+            <input
+              id="password"
+              className="field-input password-input"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Create a secure password"
+              value={form.password}
+              onChange={handleChange}
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword((current) => !current)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              👁
+            </button>
+          </div>
+          {errors.password ? <p className="field-error">{errors.password}</p> : null}
+
+          <div className="role-section">
+            <label className="field-label">Select Role</label>
+            <div className="role-grid">
+              {roles.map((role) => (
+                <button
+                  key={role.value}
+                  type="button"
+                  className={form.role === role.value ? "role-card role-card-active" : "role-card"}
+                  onClick={() => setForm((current) => ({ ...current, role: role.value }))}
+                >
+                  <strong>{role.label}</strong>
+                  <span>{role.description}</span>
+                </button>
+              ))}
+            </div>
+            {errors.role ? <p className="field-error">{errors.role}</p> : null}
+          </div>
+
+          {status.message ? (
+            <p className={status.type === "error" ? "status-message status-error" : "status-message status-success"}>
+              {status.message}
+            </p>
+          ) : null}
+
+          <button className="primary-button auth-submit" type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Register"}
+          </button>
+
+          <p className="auth-footer-text">
+            Already registered? <span onClick={() => navigate("/login")}>Login here</span>
           </p>
-        </div>
-
-        <button style={styles.mainBtn} onClick={handleRegister}>
-          REGISTER
-        </button>
-
-        <p style={{ textAlign: "center", marginTop: "15px" }}>
-          Already have an account?{" "}
-          <span
-            style={{ color: "#00ffff", cursor: "pointer" }}
-            onClick={() => navigate("/login")}
-          >
-            Log In.
-          </span>
-        </p>
+        </form>
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "linear-gradient(135deg, #1e3a8a, #0f172a)"
-  },
-  card: {
-    width: "420px",
-    padding: "40px",
-    borderRadius: "20px",
-    background: "rgba(0,0,50,0.85)",
-    color: "white"
-  },
-  input: {
-    width: "100%",
-    padding: "12px",
-    margin: "10px 0",
-    borderRadius: "10px",
-    border: "none"
-  },
-  roleContainer: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "10px"
-  },
-  roleBtn: {
-    flex: 1,
-    padding: "8px",
-    borderRadius: "10px",
-    border: "1px solid #00ffff",
-    cursor: "pointer"
-  },
-  termsContainer: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    marginTop: "15px",
-    fontSize: "13px"
-  },
-  termsText: {
-    lineHeight: "1.5"
-  },
-  mainBtn: {
-    width: "100%",
-    padding: "12px",
-    marginTop: "20px",
-    borderRadius: "25px",
-    border: "none",
-    background: "linear-gradient(to right, #00ffff, #00ff99)",
-    cursor: "pointer"
-  }
-};
 
 export default Register;
