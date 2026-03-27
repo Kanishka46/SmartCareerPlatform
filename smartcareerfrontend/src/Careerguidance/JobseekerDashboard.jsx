@@ -6,6 +6,18 @@ function JobSeekerDashboard() {
   const user = getStoredUser();
   const [activePage, setActivePage] = useState("jobs");
   const [jobs, setJobs] = useState([]);
+  const [appliedJobIds, setAppliedJobIds] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobStatus, setJobStatus] = useState("");
+  const [search, setSearch] = useState({
+    keyword: "",
+    location: "",
+  });
+  const [applyForm, setApplyForm] = useState({
+    jobId: null,
+    coverLetter: "",
+    resumeUrl: "",
+  });
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState("");
@@ -17,31 +29,82 @@ function JobSeekerDashboard() {
     resumeUrl: "",
   });
 
+  const fallbackJobs = [
+    {
+      id: 1,
+      title: "Frontend Developer",
+      company: "ABC Tech",
+      location: "Chennai",
+      salaryRange: "Rs 20,000",
+      employmentType: "FULL_TIME",
+      requiredSkills: "React, JavaScript, CSS",
+      description: "Build responsive web interfaces and collaborate with UI and backend teams.",
+    },
+    {
+      id: 2,
+      title: "Java Developer",
+      company: "XYZ Pvt Ltd",
+      location: "Bangalore",
+      salaryRange: "Rs 30,000",
+      employmentType: "FULL_TIME",
+      requiredSkills: "Java, Spring Boot, MySQL",
+      description: "Develop backend services and maintain enterprise APIs.",
+    },
+  ];
+
   const logout = () => {
     clearAuthSession();
     window.location.href = "/login";
   };
 
+  const loadJobs = async (keyword = "", location = "") => {
+    setJobsLoading(true);
+    setJobStatus("");
+
+    try {
+      const hasFilters = keyword.trim() || location.trim();
+      const response = hasFilters
+        ? await axios.get(`${API_BASE_URL}/jobs/search`, {
+            params: {
+              keyword: keyword.trim(),
+              location: location.trim(),
+            },
+          })
+        : await axios.get(`${API_BASE_URL}/jobs`);
+
+      setJobs(response.data);
+
+      if (!response.data.length) {
+        setJobStatus("No jobs matched your current search.");
+      }
+    } catch {
+      setJobs(fallbackJobs);
+      setJobStatus("Showing fallback jobs because the backend jobs service could not be reached.");
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const loadApplications = async () => {
+    if (!user?.id || user.role !== "JOB_SEEKER") {
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/jobseeker/applications/${user.id}`);
+      setAppliedJobIds(response.data.map((application) => application.job?.id).filter(Boolean));
+    } catch {
+      setAppliedJobIds([]);
+    }
+  };
+
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/jobs`)
-      .then((res) => setJobs(res.data))
-      .catch(() => {
-        setJobs([
-          {
-            title: "Frontend Developer",
-            company: "ABC Tech",
-            location: "Chennai",
-            salary: "Rs 20,000",
-          },
-          {
-            title: "Java Developer",
-            company: "XYZ Pvt Ltd",
-            location: "Bangalore",
-            salary: "Rs 30,000",
-          },
-        ]);
-      });
+    loadJobs();
   }, []);
+
+  useEffect(() => {
+    loadApplications();
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!user?.id || user.role !== "JOB_SEEKER") {
@@ -53,13 +116,19 @@ function JobSeekerDashboard() {
     axios.get(`${API_BASE_URL}/jobseeker/profile/${user.id}`)
       .then((res) => {
         if (res.data) {
-          setProfile({
+          const nextProfile = {
             phone: res.data.phone || "",
             location: res.data.location || "",
             skills: res.data.skills || "",
             experienceLevel: res.data.experienceLevel || "",
             resumeUrl: res.data.resumeUrl || "",
-          });
+          };
+
+          setProfile(nextProfile);
+          setApplyForm((current) => ({
+            ...current,
+            resumeUrl: current.resumeUrl || nextProfile.resumeUrl || "",
+          }));
         }
       })
       .catch(() => {
@@ -71,6 +140,69 @@ function JobSeekerDashboard() {
   const handleProfileChange = (event) => {
     const { name, value } = event.target;
     setProfile((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSearchChange = (event) => {
+    const { name, value } = event.target;
+    setSearch((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleApplyFormChange = (event) => {
+    const { name, value } = event.target;
+    setApplyForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSearch = async () => {
+    await loadJobs(search.keyword, search.location);
+  };
+
+  const resetSearch = async () => {
+    setSearch({ keyword: "", location: "" });
+    await loadJobs();
+  };
+
+  const openApplyForm = (jobId) => {
+    setApplyForm({
+      jobId,
+      coverLetter: "",
+      resumeUrl: profile.resumeUrl || "",
+    });
+    setJobStatus("");
+  };
+
+  const cancelApply = () => {
+    setApplyForm({
+      jobId: null,
+      coverLetter: "",
+      resumeUrl: profile.resumeUrl || "",
+    });
+  };
+
+  const applyForJob = async () => {
+    if (!user?.id) {
+      setJobStatus("Please log in again before applying.");
+      return;
+    }
+
+    if (!applyForm.resumeUrl.trim()) {
+      setJobStatus("Please add a resume URL before applying.");
+      return;
+    }
+
+    try {
+      await axios.post(`${API_BASE_URL}/jobseeker/jobs/${applyForm.jobId}/apply`, {
+        jobSeekerId: user.id,
+        coverLetter: applyForm.coverLetter,
+        resumeUrl: applyForm.resumeUrl,
+      });
+
+      setAppliedJobIds((current) => [...new Set([...current, applyForm.jobId])]);
+      setJobStatus("Application submitted successfully.");
+      cancelApply();
+    } catch (error) {
+      const serverMessage = error.response?.data?.message;
+      setJobStatus(serverMessage || "Could not submit application right now.");
+    }
   };
 
   const saveProfile = async () => {
@@ -121,7 +253,7 @@ function JobSeekerDashboard() {
           <div>
             <p style={styles.headerKicker}>Career Dashboard</p>
             <h1 style={styles.heading}>
-              {activePage === "jobs" ? "Available Jobs" : "Job Seeker Profile"}
+              {activePage === "jobs" ? "Find and Apply for Jobs" : "Job Seeker Profile"}
             </h1>
           </div>
           <div style={styles.userBadge}>
@@ -131,22 +263,119 @@ function JobSeekerDashboard() {
         </div>
 
         {activePage === "jobs" ? (
-          jobs.length === 0 ? (
-            <p>No jobs available</p>
-          ) : (
-            jobs.map((job, index) => (
-              <div key={index} style={styles.jobCard}>
-                <h3>{job.title}</h3>
-                <p>Company: {job.company}</p>
-                <p>Location: {job.location}</p>
-                <p>Salary: {job.salary}</p>
+          <>
+            <div style={styles.searchCard}>
+              <div style={styles.searchGrid}>
+                <div>
+                  <label style={styles.label}>Search by title or keyword</label>
+                  <input
+                    style={styles.input}
+                    name="keyword"
+                    value={search.keyword}
+                    onChange={handleSearchChange}
+                    placeholder="Java, React, Analyst"
+                  />
+                </div>
 
-                <button style={styles.applyButton}>
-                  Apply Now
+                <div>
+                  <label style={styles.label}>Location</label>
+                  <input
+                    style={styles.input}
+                    name="location"
+                    value={search.location}
+                    onChange={handleSearchChange}
+                    placeholder="Chennai, Bangalore"
+                  />
+                </div>
+              </div>
+
+              <div style={styles.searchActions}>
+                <button style={styles.primaryButton} onClick={handleSearch} disabled={jobsLoading}>
+                  {jobsLoading ? "Searching..." : "Search Jobs"}
+                </button>
+                <button style={styles.secondaryButton} onClick={resetSearch}>
+                  Reset
                 </button>
               </div>
-            ))
-          )
+
+              {jobStatus ? <p style={styles.status}>{jobStatus}</p> : null}
+            </div>
+
+            {jobs.length === 0 && !jobsLoading ? (
+              <p>No jobs available</p>
+            ) : (
+              jobs.map((job, index) => {
+                const jobId = job.id || index;
+                const isApplyOpen = applyForm.jobId === jobId;
+                const alreadyApplied = appliedJobIds.includes(job.id);
+
+                return (
+                  <div key={jobId} style={styles.jobCard}>
+                    <div style={styles.jobHeader}>
+                      <div>
+                        <h3 style={styles.jobTitle}>{job.title}</h3>
+                        <p style={styles.jobMeta}>Company: {job.company}</p>
+                        <p style={styles.jobMeta}>Location: {job.location}</p>
+                      </div>
+                      <div style={styles.jobBadge}>
+                        <strong>{job.salaryRange || job.salary || "Salary not specified"}</strong>
+                        <span>{job.employmentType || "Role"}</span>
+                      </div>
+                    </div>
+
+                    <p style={styles.jobDescription}>
+                      {job.description || "No description available for this job yet."}
+                    </p>
+
+                    <p style={styles.skillsLine}>
+                      <strong>Skills:</strong> {job.requiredSkills || "Not specified"}
+                    </p>
+
+                    <div style={styles.jobActions}>
+                      <button
+                        style={alreadyApplied ? styles.disabledButton : styles.applyButton}
+                        onClick={() => openApplyForm(jobId)}
+                        disabled={alreadyApplied}
+                      >
+                        {alreadyApplied ? "Applied" : "Apply for Job"}
+                      </button>
+                    </div>
+
+                    {isApplyOpen ? (
+                      <div style={styles.applyPanel}>
+                        <label style={styles.label}>Resume URL</label>
+                        <input
+                          style={styles.input}
+                          name="resumeUrl"
+                          value={applyForm.resumeUrl}
+                          onChange={handleApplyFormChange}
+                          placeholder="Paste your resume link"
+                        />
+
+                        <label style={styles.label}>Cover Letter</label>
+                        <textarea
+                          style={styles.textarea}
+                          name="coverLetter"
+                          value={applyForm.coverLetter}
+                          onChange={handleApplyFormChange}
+                          placeholder="Write a short introduction for this application"
+                        />
+
+                        <div style={styles.applyPanelActions}>
+                          <button style={styles.primaryButton} onClick={applyForJob}>
+                            Submit Application
+                          </button>
+                          <button style={styles.secondaryButton} onClick={cancelApply}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
+          </>
         ) : (
           <div style={styles.profileCard}>
             <h2 style={styles.profileTitle}>Update your professional profile</h2>
@@ -286,21 +515,116 @@ const styles = {
     display: "grid",
     gap: "4px",
   },
+  searchCard: {
+    background: "white",
+    borderRadius: "16px",
+    padding: "22px",
+    marginBottom: "20px",
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+  },
+  searchGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
+  },
+  searchActions: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "16px",
+    flexWrap: "wrap",
+  },
   jobCard: {
     background: "white",
     padding: "20px",
     marginTop: "15px",
-    borderRadius: "10px",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    borderRadius: "14px",
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+  },
+  jobHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  },
+  jobTitle: {
+    marginTop: 0,
+    marginBottom: "10px",
+  },
+  jobMeta: {
+    margin: "4px 0",
+    color: "#475569",
+  },
+  jobBadge: {
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    borderRadius: "12px",
+    padding: "12px 14px",
+    minWidth: "160px",
+    display: "grid",
+    gap: "4px",
+  },
+  jobDescription: {
+    color: "#334155",
+    lineHeight: 1.6,
+    marginTop: "16px",
+    marginBottom: "12px",
+  },
+  skillsLine: {
+    margin: "10px 0 0",
+    color: "#0f172a",
+  },
+  jobActions: {
+    marginTop: "16px",
   },
   applyButton: {
-    marginTop: "10px",
-    padding: "10px",
+    padding: "10px 14px",
     background: "#2563eb",
     color: "white",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     cursor: "pointer",
+    fontWeight: 600,
+  },
+  primaryButton: {
+    padding: "10px 14px",
+    background: "#0f766e",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  secondaryButton: {
+    padding: "10px 14px",
+    background: "#e2e8f0",
+    color: "#0f172a",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  disabledButton: {
+    padding: "10px 14px",
+    background: "#cbd5e1",
+    color: "#475569",
+    border: "none",
+    borderRadius: "8px",
+    fontWeight: 600,
+    cursor: "not-allowed",
+  },
+  applyPanel: {
+    marginTop: "18px",
+    padding: "18px",
+    borderRadius: "12px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+  },
+  applyPanelActions: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "14px",
+    flexWrap: "wrap",
   },
   profileCard: {
     background: "white",

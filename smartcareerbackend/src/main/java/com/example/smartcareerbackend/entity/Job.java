@@ -25,6 +25,7 @@ public class Job {
     private String description;
     private String requiredSkills;
     private String salaryRange;
+    private String applicationLink;
     private Boolean active = true;
     private LocalDateTime postedAt;
 
