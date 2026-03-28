@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import { API_BASE_URL, clearAuthSession, getStoredUser } from "../auth";
 
 function RecruiterDashboard() {
@@ -10,6 +19,7 @@ function RecruiterDashboard() {
   const [applications, setApplications] = useState([]);
   const [jobStatus, setJobStatus] = useState("");
   const [applicationStatus, setApplicationStatus] = useState("");
+  const [activeApplicationTab, setActiveApplicationTab] = useState("all");
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [jobForm, setJobForm] = useState({
@@ -22,6 +32,12 @@ function RecruiterDashboard() {
     applicationLink: "",
     description: "",
   });
+  const [profile, setProfile] = useState({
+  companyName: "",
+  designation: "",
+  companyWebsite: "",
+  phone: "",
+});
 
   const logout = () => {
     clearAuthSession();
@@ -79,6 +95,11 @@ function RecruiterDashboard() {
       loadApplications(selectedJobId);
     }
   }, [activePage, selectedJobId]);
+  useEffect(() => {
+  if (activePage === "profile") {
+    loadProfile();
+  }
+}, [activePage]);
 
   const handleJobChange = (event) => {
     const { name, value } = event.target;
@@ -139,6 +160,44 @@ function RecruiterDashboard() {
   };
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId);
+  // 📊 Chart Data
+const jobTypeData = [
+  { name: "Full Time", value: jobs.filter(j => j.employmentType === "FULL_TIME").length },
+  { name: "Intern", value: jobs.filter(j => j.employmentType === "INTERN").length },
+  { name: "Contract", value: jobs.filter(j => j.employmentType === "CONTRACT").length },
+];
+
+const applicationStatusData = [
+  { name: "Total", value: applications.length },
+  { name: "Shortlisted", value: applications.filter(a => a.status === "SHORTLISTED").length },
+  { name: "Rejected", value: applications.filter(a => a.status === "REJECTED").length },
+];
+const loadProfile = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/recruiter/profile/${user.id}`);
+    if (res.data) setProfile(res.data);
+  } catch {}
+};
+
+const saveProfile = async () => {
+  try {
+    await axios.post(`${API_BASE_URL}/recruiter/profile`, {
+      ...profile,
+      userId: user.id,
+    });
+    alert("Profile saved!");
+  } catch {
+    alert("Error saving profile");
+  }
+};
+const responsiveInput = {
+  width: "100%",
+  padding: "clamp(10px, 3vw, 12px)",
+  borderRadius: "10px",
+  border: "1px solid #cbd5e1",
+  fontSize: "clamp(14px, 3vw, 16px)",
+  outline: "none",
+};
 
   return (
     <div style={styles.container}>
@@ -157,6 +216,9 @@ function RecruiterDashboard() {
           <div style={styles.menu} onClick={() => setActivePage("applications")}>
             Applications
           </div>
+          <div style={styles.menu} onClick={() => setActivePage("profile")}>
+  Profile
+</div>
         </div>
 
         <div style={styles.logout} onClick={logout}>
@@ -181,22 +243,57 @@ function RecruiterDashboard() {
           </div>
         </div>
 
+       
         {activePage === "dashboard" ? (
-          <div style={styles.grid}>
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Jobs Posted</p>
-              <h3 style={styles.metricValue}>{jobs.length}</h3>
-            </div>
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Selected Job</p>
-              <h3 style={styles.metricValue}>{selectedJob?.title || "None"}</h3>
-            </div>
-            <div style={styles.metricCard}>
-              <p style={styles.metricLabel}>Applications Loaded</p>
-              <h3 style={styles.metricValue}>{applications.length}</h3>
-            </div>
-          </div>
-        ) : null}
+  <>
+    {/* Existing Cards */}
+    <div style={styles.grid}>
+      <div style={styles.metricCard}>
+        <p style={styles.metricLabel}>Jobs Posted</p>
+        <h3 style={styles.metricValue}>{jobs.length}</h3>
+      </div>
+      <div style={styles.metricCard}>
+        <p style={styles.metricLabel}>Selected Job</p>
+        <h3 style={styles.metricValue}>{selectedJob?.title || "None"}</h3>
+      </div>
+      <div style={styles.metricCard}>
+        <p style={styles.metricLabel}>Applications Loaded</p>
+        <h3 style={styles.metricValue}>{applications.length}</h3>
+      </div>
+    </div>
+
+    {/* ✅ Charts Section */}
+    <div style={{ marginTop: "30px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+      
+      <div style={styles.metricCard}>
+        <h3>Jobs by Type</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={jobTypeData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#2563eb" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={styles.metricCard}>
+        <h3>Applications Overview</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={applicationStatusData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="value" fill="#2563eb" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+    </div>
+  </>
+) : null}
 
         {activePage === "post" ? (
           <div style={styles.formCard}>
@@ -213,7 +310,7 @@ function RecruiterDashboard() {
               </select>
               <input name="salaryRange" value={jobForm.salaryRange} onChange={handleJobChange} style={styles.input} placeholder="Salary Range" />
               <input name="requiredSkills" value={jobForm.requiredSkills} onChange={handleJobChange} style={styles.input} placeholder="Required Skills" />
-              <input name="applicationLink" value={jobForm.applicationLink} onChange={handleJobChange} style={styles.inputWide} placeholder="External Application Link" />
+              {/* <input name="applicationLink" value={jobForm.applicationLink} onChange={handleJobChange} style={styles.inputWide} placeholder="External Application Link" /> */}
             </div>
 
             <textarea
@@ -258,16 +355,17 @@ function RecruiterDashboard() {
 
                   <p style={styles.jobDescription}>{job.description || "No description available."}</p>
                   <p style={styles.skillsLine}><strong>Skills:</strong> {job.requiredSkills || "Not specified"}</p>
-                  <p style={styles.skillsLine}>
+                 <p style={styles.skillsLine}>
                     <strong>Application Link:</strong> {job.applicationLink || "Internal apply flow"}
                   </p>
+                  
                 </div>
               ))
             )}
           </div>
         ) : null}
 
-        {activePage === "applications" ? (
+        {/* {activePage === "applications" ? (
           <div>
             <div style={styles.selectorCard}>
               <label style={styles.label}>Select Job</label>
@@ -314,14 +412,255 @@ function RecruiterDashboard() {
                   <p style={styles.jobDescription}>
                     <strong>Cover Letter:</strong> {application.coverLetter || "No cover letter submitted."}
                   </p>
-                  <p style={styles.skillsLine}>
-                    <strong>Resume Link:</strong> {application.resumeUrl || "No resume link provided"}
-                  </p>
+                 
+                  <a
+  href={application && application.resumeUrl ? application.resumeUrl : "#"}
+  target="_blank"
+  rel="noopener noreferrer"
+  style={{ color: "black", fontWeight: "bold", textDecoration: "none" }}
+>
+  {application && application.resumeUrl ? "View Resume" : "No resume available"}
+</a>
                 </div>
               ))
             )}
           </div>
-        ) : null}
+        ) : null} */}
+        {activePage === "applications" ? (
+  <div>
+    <div style={styles.selectorCard}>
+      <label style={styles.label}>Select Job</label>
+      <select
+        style={styles.input}
+        value={selectedJobId || ""}
+        onChange={(event) => setSelectedJobId(Number(event.target.value))}
+      >
+        <option value="">Choose a job</option>
+        {jobs.map((job) => (
+          <option key={job.id} value={job.id}>
+            {job.title} - {job.company}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* ✅ Tabs */}
+    <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
+      <button
+        style={styles.secondaryButton}
+        onClick={() => setActiveApplicationTab("all")}
+      >
+        All Applications
+      </button>
+
+      <button
+        style={styles.primaryButton}
+        onClick={() => setActiveApplicationTab("shortlisted")}
+      >
+        Shortlisted
+      </button>
+    </div>
+
+    {applicationStatus ? <p style={styles.status}>{applicationStatus}</p> : null}
+    {loadingApplications ? <p>Loading applications...</p> : null}
+
+    {!selectedJobId ? (
+      <p>Select a job to view applications.</p>
+    ) : applications.length === 0 && !loadingApplications ? (
+      <p>No applications found for this job yet.</p>
+    ) : (
+      applications
+        .filter((application) => {
+          if (activeApplicationTab === "shortlisted") {
+            return application.status === "SHORTLISTED";
+          }
+          return application.status !== "SHORTLISTED";
+        })
+        .map((application) => (
+          <div key={application.id} style={styles.applicationCard}>
+            <div style={styles.applicationHeader}>
+              <div>
+                <h3 style={styles.jobTitle}>
+                  {application.jobSeeker?.name || "Applicant"}
+                </h3>
+                <p style={styles.jobMeta}>
+                  Email: {application.jobSeeker?.email || "N/A"}
+                </p>
+                <p style={styles.jobMeta}>Status: {application.status}</p>
+              </div>
+
+              <div style={styles.applicationActions}>
+                <button
+                  style={styles.primaryButton}
+                  onClick={() =>
+                    updateApplicationState(application.id, "SHORTLISTED")
+                  }
+                >
+                  Shortlist
+                </button>
+
+                <button
+                  style={styles.rejectButton}
+                  onClick={() =>
+                    updateApplicationState(application.id, "REJECTED")
+                  }
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+
+            <p style={styles.jobDescription}>
+              <strong>Cover Letter:</strong>{" "}
+              {application.coverLetter || "No cover letter submitted."}
+            </p>
+
+            <a
+              href={
+                application && application.resumeUrl
+                  ? application.resumeUrl
+                  : "#"
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "black",
+                fontWeight: "bold",
+                textDecoration: "none",
+              }}
+            >
+              {application && application.resumeUrl
+                ? "View Resume"
+                : "No resume available"}
+            </a>
+          </div>
+        ))
+    )}
+  </div>
+) : null}
+{activePage === "profile" ? (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      padding: "20px",
+    }}
+  >
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "600px",
+        background: "white",
+        borderRadius: "20px",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        overflow: "hidden",
+      }}
+    >
+      {/* 🔷 Header */}
+      <div
+        style={{
+          background: "#2563eb",
+          padding: "clamp(20px, 5vw, 30px)",
+          color: "white",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "clamp(60px, 15vw, 80px)",
+            height: "clamp(60px, 15vw, 80px)",
+            borderRadius: "50%",
+            background: "white",
+            color: "#2563eb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "clamp(20px, 5vw, 28px)",
+            fontWeight: "bold",
+            margin: "0 auto 10px",
+          }}
+        >
+          {user?.name?.charAt(0) || "R"}
+        </div>
+
+        <h2 style={{ margin: 0, fontSize: "clamp(18px, 4vw, 24px)" }}>
+          {user?.name || "Recruiter"}
+        </h2>
+
+        <p style={{ margin: 0, fontSize: "clamp(12px, 3vw, 14px)" }}>
+          {user?.email || "No email"}
+        </p>
+      </div>
+
+      {/* 🔷 Form */}
+      <div style={{ padding: "clamp(15px, 4vw, 25px)" }}>
+        <h3 style={{ marginBottom: "15px" }}>Company Details</h3>
+
+        <div
+          style={{
+            display: "grid",
+            gap: "12px",
+          }}
+        >
+          <input
+            placeholder="Company Name"
+            value={profile.companyName}
+            onChange={(e) =>
+              setProfile({ ...profile, companyName: e.target.value })
+            }
+            style={responsiveInput}
+          />
+
+          <input
+            placeholder="Designation"
+            value={profile.designation}
+            onChange={(e) =>
+              setProfile({ ...profile, designation: e.target.value })
+            }
+            style={responsiveInput}
+          />
+
+          <input
+            placeholder="Company Website"
+            value={profile.companyWebsite}
+            onChange={(e) =>
+              setProfile({ ...profile, companyWebsite: e.target.value })
+            }
+            style={responsiveInput}
+          />
+
+          <input
+            placeholder="Phone Number"
+            value={profile.phone}
+            onChange={(e) =>
+              setProfile({ ...profile, phone: e.target.value })
+            }
+            style={responsiveInput}
+          />
+        </div>
+
+        {/* 🔷 Button */}
+        <button
+          onClick={saveProfile}
+          style={{
+            marginTop: "20px",
+            width: "100%",
+            padding: "clamp(10px, 3vw, 14px)",
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
+        >
+          Save Profile
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
+
       </div>
     </div>
   );
