@@ -1,26 +1,46 @@
-import { clearAuthSession, getStoredUser } from "../auth";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { API_BASE_URL, clearAuthSession, getStoredUser } from "../auth";
 
 function AdminDashboard() {
   const user = getStoredUser();
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("");
 
   const logout = () => {
     clearAuthSession();
     window.location.href = "/login";
   };
 
-  const cards = [
-    { title: "Total Users", value: "1,248", note: "Students, job seekers, recruiters" },
-    { title: "Active Recruiters", value: "86", note: "Posting internships and jobs" },
-    { title: "Applications", value: "3,542", note: "Tracked across the platform" },
-    { title: "AI Insights", value: "92%", note: "Resume analysis completion rate" },
-  ];
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/admin/overview`)
+      .then((res) => setOverview(res.data))
+      .catch(() => setStatus("Could not load admin analytics right now."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const stats = overview ? [
+    { title: "Total Users", value: overview.totalUsers, note: "All registered platform accounts" },
+    { title: "Active Jobs", value: overview.activeJobs, note: "Current job postings from recruiters" },
+    { title: "Internships", value: overview.internships, note: "Internship opportunities on the platform" },
+    { title: "Applications", value: overview.totalApplications, note: "Total applications submitted" },
+  ] : [];
+
+  const roleStats = overview ? [
+    { label: "Students", value: overview.students },
+    { label: "Job Seekers", value: overview.jobSeekers },
+    { label: "Recruiters", value: overview.recruiters },
+    { label: "Admins", value: overview.admins },
+  ] : [];
 
   return (
     <div style={styles.page}>
       <aside style={styles.sidebar}>
         <div>
-          <h2 style={styles.brand}>SmartCareer Admin</h2>
-          <p style={styles.muted}>System control center</p>
+          <p style={styles.sidebarKicker}>Smart Career Platform</p>
+          <h2 style={styles.brand}>Admin Command Center</h2>
+          <p style={styles.muted}>Live control, analytics, and platform visibility.</p>
         </div>
 
         <div style={styles.userPanel}>
@@ -34,37 +54,67 @@ function AdminDashboard() {
       </aside>
 
       <main style={styles.main}>
-        <header style={styles.header}>
+        <header style={styles.hero}>
           <div>
             <p style={styles.kicker}>Administrator Dashboard</p>
-            <h1 style={styles.title}>Platform analytics and control</h1>
+            <h1 style={styles.title}>Dynamic platform overview</h1>
+            <p style={styles.subtitle}>
+              Monitor users, recruiter activity, jobs, internships, and application flow from one professional workspace.
+            </p>
+          </div>
+
+          <div style={styles.heroBadge}>
+            <span>Shortlisted</span>
+            <strong>{overview?.shortlistedApplications ?? "--"}</strong>
+            <small>Rejected: {overview?.rejectedApplications ?? "--"}</small>
           </div>
         </header>
 
-        <section style={styles.grid}>
-          {cards.map((card) => (
-            <article key={card.title} style={styles.card}>
-              <p style={styles.cardLabel}>{card.title}</p>
-              <h3 style={styles.cardValue}>{card.value}</h3>
-              <span style={styles.cardNote}>{card.note}</span>
-            </article>
-          ))}
-        </section>
+        {loading ? <p>Loading dashboard...</p> : null}
+        {status ? <p style={styles.status}>{status}</p> : null}
 
-        <section style={styles.panelRow}>
-          <div style={styles.panel}>
-            <h3>User Management</h3>
-            <p>Manage student, job seeker, recruiter, and admin access across the platform.</p>
-          </div>
-          <div style={styles.panel}>
-            <h3>Activity Monitoring</h3>
-            <p>Track registrations, applications, and recruiter postings from one overview panel.</p>
-          </div>
-          <div style={styles.panel}>
-            <h3>Reports</h3>
-            <p>Review analytics, trend summaries, and AI adoption insights for the entire system.</p>
-          </div>
-        </section>
+        {overview ? (
+          <>
+            <section style={styles.grid}>
+              {stats.map((card) => (
+                <article key={card.title} style={styles.card}>
+                  <p style={styles.cardLabel}>{card.title}</p>
+                  <h3 style={styles.cardValue}>{card.value}</h3>
+                  <span style={styles.cardNote}>{card.note}</span>
+                </article>
+              ))}
+            </section>
+
+            <section style={styles.panelGrid}>
+              <div style={styles.panel}>
+                <h3 style={styles.panelTitle}>Role Distribution</h3>
+                <div style={styles.roleGrid}>
+                  {roleStats.map((item) => (
+                    <div key={item.label} style={styles.roleCard}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.panel}>
+                <h3 style={styles.panelTitle}>Recent Users</h3>
+                <div style={styles.userList}>
+                  {overview.recentUsers?.length ? overview.recentUsers.map((recentUser) => (
+                    <div key={recentUser.id} style={styles.userRow}>
+                      <div>
+                        <strong>{recentUser.name}</strong>
+                        <p style={styles.userEmail}>{recentUser.email}</p>
+                      </div>
+                      <span style={styles.rolePill}>{recentUser.role}</span>
+                    </div>
+                  )) : <p>No recent users found.</p>}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : null}
       </main>
     </div>
   );
@@ -74,30 +124,39 @@ const styles = {
   page: {
     minHeight: "100vh",
     display: "grid",
-    gridTemplateColumns: "280px 1fr",
-    background: "#f8fafc",
+    gridTemplateColumns: "290px 1fr",
+    background: "linear-gradient(135deg, #eef2ff 0%, #f8fafc 48%, #ecfeff 100%)",
   },
   sidebar: {
-    padding: "28px",
-    background: "#0f172a",
+    padding: "30px",
+    background: "linear-gradient(180deg, #111827 0%, #172554 100%)",
     color: "#f8fafc",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
   },
-  brand: {
+  sidebarKicker: {
     margin: 0,
+    color: "#67e8f9",
+    textTransform: "uppercase",
+    letterSpacing: "0.12em",
+    fontSize: "0.8rem",
+  },
+  brand: {
+    margin: "10px 0 8px",
+    fontSize: "2rem",
   },
   muted: {
-    color: "#94a3b8",
+    color: "#cbd5e1",
+    lineHeight: 1.6,
   },
   userPanel: {
-    marginTop: "28px",
     padding: "18px",
-    borderRadius: "18px",
-    background: "rgba(148, 163, 184, 0.12)",
+    borderRadius: "20px",
+    background: "rgba(255,255,255,0.08)",
     display: "grid",
     gap: "8px",
+    backdropFilter: "blur(12px)",
   },
   logoutButton: {
     border: "none",
@@ -109,56 +168,129 @@ const styles = {
     cursor: "pointer",
   },
   main: {
-    padding: "36px",
+    padding: "34px",
   },
-  header: {
+  hero: {
     marginBottom: "24px",
+    padding: "26px",
+    borderRadius: "28px",
+    background: "linear-gradient(135deg, #0f172a 0%, #1d4ed8 52%, #0891b2 100%)",
+    color: "white",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "24px",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+    boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
   },
   kicker: {
     margin: 0,
-    color: "#0f766e",
     textTransform: "uppercase",
-    letterSpacing: "0.1em",
-    fontSize: "0.85rem",
-    fontWeight: 700,
+    letterSpacing: "0.12em",
+    fontSize: "0.82rem",
+    color: "#bfdbfe",
   },
   title: {
-    margin: "8px 0 0",
-    fontSize: "2.2rem",
+    margin: "10px 0 8px",
+    fontSize: "2.35rem",
+  },
+  subtitle: {
+    margin: 0,
+    maxWidth: "62ch",
+    color: "#dbeafe",
+    lineHeight: 1.7,
+  },
+  heroBadge: {
+    minWidth: "180px",
+    padding: "18px",
+    borderRadius: "22px",
+    background: "rgba(255,255,255,0.12)",
+    display: "grid",
+    gap: "6px",
+  },
+  status: {
+    color: "#b91c1c",
+    fontWeight: 600,
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: "18px",
   },
   card: {
-    padding: "22px",
-    borderRadius: "22px",
-    background: "#fff",
-    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+    padding: "24px",
+    borderRadius: "24px",
+    background: "rgba(255,255,255,0.84)",
+    border: "1px solid rgba(148,163,184,0.18)",
+    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)",
+    backdropFilter: "blur(12px)",
   },
   cardLabel: {
     margin: 0,
     color: "#64748b",
-    fontSize: "0.9rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontSize: "0.8rem",
   },
   cardValue: {
-    margin: "10px 0",
-    fontSize: "2rem",
+    margin: "14px 0 10px",
+    fontSize: "2.25rem",
   },
   cardNote: {
     color: "#475569",
+    lineHeight: 1.5,
   },
-  panelRow: {
-    marginTop: "24px",
+  panelGrid: {
+    marginTop: "22px",
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gridTemplateColumns: "1.1fr 1fr",
     gap: "18px",
   },
   panel: {
     padding: "24px",
-    borderRadius: "22px",
-    background: "linear-gradient(135deg, #fff7ed, #ffedd5)",
+    borderRadius: "24px",
+    background: "#ffffff",
+    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)",
+  },
+  panelTitle: {
+    marginTop: 0,
+    marginBottom: "18px",
+  },
+  roleGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "14px",
+  },
+  roleCard: {
+    padding: "18px",
+    borderRadius: "18px",
+    background: "linear-gradient(135deg, #eff6ff, #ecfeff)",
+    display: "grid",
+    gap: "8px",
+  },
+  userList: {
+    display: "grid",
+    gap: "12px",
+  },
+  userRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    alignItems: "center",
+    padding: "14px 0",
+    borderBottom: "1px solid #e2e8f0",
+  },
+  userEmail: {
+    margin: "4px 0 0",
+    color: "#64748b",
+  },
+  rolePill: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    fontWeight: 700,
+    fontSize: "0.82rem",
   },
 };
 

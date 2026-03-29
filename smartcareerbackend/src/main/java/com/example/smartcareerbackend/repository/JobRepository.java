@@ -10,4 +10,5 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByActiveTrueOrderByPostedAtDesc();
     List<Job> findByRecruiterIdOrderByPostedAtDesc(Long recruiterId);
     List<Job> findByActiveTrueAndTitleContainingIgnoreCaseOrActiveTrueAndLocationContainingIgnoreCase(String title, String location);
+    long countByActiveTrue();
 }
