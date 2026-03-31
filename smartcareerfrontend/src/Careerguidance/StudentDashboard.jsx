@@ -21,13 +21,25 @@ function StudentDashboard() {
   const [matchScore, setMatchScore] = useState(0);
 
   const [fileName, setFileName] = useState("");
-
+const [profile, setProfile] = useState({
+  phone: "",
+  address: "",
+  linkedinUrl: "",
+  githubUrl: "",
+  bio: "",
+  resumeUrl: ""
+});
   // 🔥 LOGOUT FUNCTION
   const logout = () => {
     clearAuthSession();
     window.location.href = "/login";
   };
-
+const [appliedJobs, setAppliedJobs] = useState([]);
+const [applyForm, setApplyForm] = useState({
+  jobId: null,
+  coverLetter: "",
+  resumeUrl: ""
+});
   // ✅ SAFE API
   useEffect(() => {
     axios.get("http://localhost:8081/api/internships")
@@ -61,7 +73,62 @@ function StudentDashboard() {
       }
     ]
   };
+  const handleChange = (field, value) => {
+  setProfile({
+    ...profile,
+    [field]: value
+  });
+};
+const saveProfile = async () => {
+  try {
+    const response = await axios.post(
+      "http://localhost:8081/api/student/profile",
+      profile
+    );
 
+    alert("Profile saved successfully ✅");
+    console.log(response.data);
+
+  } catch (error) {
+    console.error("FULL ERROR 👉", error);
+    alert("Error: " + error.message);
+  }
+};
+const openApplyForm = (jobId) => {
+  setApplyForm({
+    jobId,
+    coverLetter: "",
+    resumeUrl: profile.resumeUrl || ""
+  });
+};
+const cancelApply = () => {
+  setApplyForm({
+    jobId: null,
+    coverLetter: "",
+    resumeUrl: ""
+  });
+};
+const applyForJob = async () => {
+  try {
+    await axios.post(
+      `http://localhost:8081/api/jobseeker/jobs/${applyForm.jobId}/apply`,
+      {
+        jobSeekerId: 1, // 🔥 TEMP (replace with logged-in user later)
+        coverLetter: applyForm.coverLetter,
+        resumeUrl: applyForm.resumeUrl
+      }
+    );
+
+    setAppliedJobs([...appliedJobs, applyForm.jobId]);
+    alert("Applied successfully ✅");
+
+    cancelApply();
+
+  } catch (error) {
+    console.error(error);
+    alert("Error applying ❌");
+  }
+};
   return (
     <div style={styles.container}>
 
@@ -123,25 +190,106 @@ function StudentDashboard() {
           </>
         )}
 
-        {/* PROFILE */}
+       
         {activePage === "profile" && (
-          <div style={styles.formCard}>
-            <h2 style={styles.heading}>👤 Student Profile</h2>
+  <div style={styles.formCard}>
+    <h2 style={styles.heading}>👤 Student Profile</h2>
 
-            <div style={styles.inputGroup}><span>👤</span><input style={styles.input} placeholder="Full Name" /></div>
-            <div style={styles.inputGroup}><span>📧</span><input style={styles.input} placeholder="Email" /></div>
-            <div style={styles.inputGroup}><span>📱</span><input style={styles.input} placeholder="Phone Number" /></div>
-            <div style={styles.inputGroup}><span>🏫</span><input style={styles.input} placeholder="College Name" /></div>
-            <div style={styles.inputGroup}><span>🎓</span><input style={styles.input} placeholder="Degree" /></div>
-            <div style={styles.inputGroup}><span>📘</span><input style={styles.input} placeholder="Branch" /></div>
-            <div style={styles.inputGroup}><span>📊</span><input style={styles.input} placeholder="CGPA" /></div>
-            <div style={styles.inputGroup}><span>🧠</span><input style={styles.input} placeholder="Skills" /></div>
-            <div style={styles.inputGroup}><span>🔗</span><input style={styles.input} placeholder="LinkedIn URL" /></div>
-            <div style={styles.inputGroup}><span>💻</span><input style={styles.input} placeholder="GitHub URL" /></div>
+    <div style={styles.inputGroup}>
+      <span>📱</span>
+      <input
+        style={styles.input}
+        placeholder="Phone Number"
+        value={profile.phone}
+        onChange={(e) => handleChange("phone", e.target.value)}
+      />
+    </div>
 
-            <button style={styles.button}>Save Profile</button>
-          </div>
-        )}
+    <div style={styles.inputGroup}>
+      <span>🏠</span>
+      <input
+        style={styles.input}
+        placeholder="Address"
+        value={profile.address}
+        onChange={(e) => handleChange("address", e.target.value)}
+      />
+    </div>
+
+    <div style={styles.inputGroup}>
+  <span>🔗</span>
+  <input
+    style={{
+      ...styles.input,
+      color: profile.linkedinUrl ? "blue" : "black",
+      textDecoration: profile.linkedinUrl ? "underline" : "none",
+      cursor: profile.linkedinUrl ? "pointer" : "text"
+    }}
+    placeholder="LinkedIn URL"
+    value={profile.linkedinUrl}
+    onChange={(e) => handleChange("linkedinUrl", e.target.value)}
+    onClick={() => {
+      if (profile.linkedinUrl) {
+        window.open(profile.linkedinUrl, "_blank");
+      }
+    }}
+  />
+</div>
+
+   <div style={styles.inputGroup}>
+  <span>💻</span>
+  <input
+    style={{
+      ...styles.input,
+      color: profile.githubUrl ? "blue" : "black",
+      textDecoration: profile.githubUrl ? "underline" : "none",
+      cursor: profile.githubUrl ? "pointer" : "text"
+    }}
+    placeholder="GitHub URL"
+    value={profile.githubUrl}
+    onChange={(e) => handleChange("githubUrl", e.target.value)}
+    onClick={() => {
+      if (profile.githubUrl) {
+        window.open(profile.githubUrl, "_blank");
+      }
+    }}
+  />
+</div>
+
+<div style={styles.inputGroup}>
+  <span>🧾</span>
+  <input
+    style={{
+      ...styles.input,
+      color: profile.resumeUrl ? "blue" : "black",
+      textDecoration: profile.resumeUrl ? "underline" : "none",
+      cursor: profile.resumeUrl ? "pointer" : "text"
+    }}
+    placeholder="Resume URL"
+    value={profile.resumeUrl}
+    onChange={(e) => handleChange("resumeUrl", e.target.value)}
+    onClick={() => {
+      if (profile.resumeUrl) {
+        window.open(profile.resumeUrl, "_blank");
+      }
+    }}
+  />
+</div>
+
+    <div style={styles.inputGroup}>
+      <span>🧠</span>
+      <input
+        style={styles.input}
+        placeholder="Bio"
+        value={profile.bio}
+        onChange={(e) => handleChange("bio", e.target.value)}
+      />
+    </div>
+
+    <button style={styles.button} onClick={saveProfile}>
+      Save Profile
+    </button>
+  </div>
+)}
 
         {/* INTERNSHIPS */}
         {activePage === "internships" && (
@@ -152,16 +300,119 @@ function StudentDashboard() {
               <p>No internships available</p>
             ) : (
               internships.map((job, index) => (
-                <div key={index} style={styles.jobCard}>
-                  <h3>{job.title}</h3>
-                  <p>🏢 {job.company}</p>
-                  <p>📍 {job.location}</p>
-                  <p>💰 {job.stipend}</p>
+  <div key={index} style={styles.jobCard}>
+    
+    {/* 🔹 Job Info */}
+    <div style={{ marginBottom: "10px" }}>
+      <h3 style={{ marginBottom: "5px" }}>{job.title}</h3>
+      <p style={{ margin: "4px 0" }}>🏢 {job.company}</p>
+      <p style={{ margin: "4px 0" }}>📍 {job.location}</p>
+      <p style={{ margin: "4px 0" }}>💰 {job.stipend}</p>
+    </div>
 
-                  <button style={styles.button}>Apply</button>
-                  <button style={styles.saveButton}>Save</button>
-                </div>
-              ))
+    {/* 🔹 Apply Button */}
+    <button
+      style={{
+        ...styles.button,
+        width: "150px",
+        marginTop: "10px"
+      }}
+      onClick={() => openApplyForm(job.id)}
+      disabled={appliedJobs.includes(job.id)}
+    >
+      {appliedJobs.includes(job.id) ? "Applied" : "Apply"}
+    </button>
+
+    {/* 🔥 APPLY FORM */}
+    {applyForm.jobId === job.id && (
+      <div
+        style={{
+          marginTop: "15px",
+          padding: "15px",
+          borderRadius: "10px",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px"
+        }}
+      >
+
+        {/* Resume Input */}
+        <input
+          style={{
+            padding: "10px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            width: "100%"
+          }}
+          placeholder="Resume URL"
+          value={applyForm.resumeUrl}
+          onChange={(e) =>
+            setApplyForm({ ...applyForm, resumeUrl: e.target.value })
+          }
+        />
+
+        {/* Cover Letter */}
+        <textarea
+          style={{
+            padding: "10px",
+            borderRadius: "6px",
+            border: "1px solid #cbd5e1",
+            width: "100%",
+            minHeight: "80px",
+            resize: "vertical"
+          }}
+          placeholder="Write your cover letter..."
+          value={applyForm.coverLetter}
+          onChange={(e) =>
+            setApplyForm({ ...applyForm, coverLetter: e.target.value })
+          }
+        />
+
+        {/* Buttons Row */}
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          
+          <button
+            style={{
+              ...styles.button,
+              flex: 1
+            }}
+            onClick={applyForJob}
+          >
+            Submit
+          </button>
+
+          {/* <button
+            style={{
+              ...styles.saveButton,
+              flex:1
+            }}
+            onClick={cancelApply}
+          >
+            Cancel
+          </button> */}
+
+        </div>
+
+      </div>
+    )}
+
+  </div>
+))
+              // internships.map((job, index) => (
+              //   <div key={index} style={styles.jobCard}>
+              //     <h3>{job.title}</h3>
+              //     <p>🏢 {job.company}</p>
+              //     <p>📍 {job.location}</p>
+              //     <p>💰 {job.stipend}</p>
+
+
+              //     <button style={styles.button}>Apply</button>
+
+              //     {/* <button style={styles.saveButton}>Save</button> */}
+              //   </div>
+              // ))
             )}
           </div>
         )}
